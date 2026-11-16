@@ -69,6 +69,32 @@
     padding: 20px;
   }
 
+  /* overview */
+  .balance .label {
+    color: var(--muted); font-size: 13px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 6px;
+  }
+  .balance .amount {
+    font-size: 38px; font-weight: 800; letter-spacing: -0.03em; margin: 0;
+  }
+  .split { display: flex; gap: 16px; }
+  .split > div { flex: 1; min-width: 0; }
+  .split .k {
+    color: var(--muted); font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 3px;
+  }
+  .split .v { font-size: 18px; font-weight: 800; margin: 0; }
+
+  .cats { display: grid; gap: 14px; }
+  .cat-top {
+    display: flex; justify-content: space-between; gap: 10px;
+    font-size: 14px; margin-bottom: 7px;
+  }
+  .cat-name { font-weight: 600; }
+  .cat-amt { font-weight: 700; white-space: nowrap; }
+  .bar { height: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
   .section-title {
     font-size: 13px;
     font-weight: 700;
@@ -298,9 +324,32 @@
     </div>
 
     <section id="view-overview">
-      <div class="placeholder">
-        <div class="big">📊</div>
-        <p>Overview is coming in the next step.</p>
+      <div class="card balance">
+        <p class="label">Total balance</p>
+        <p class="amount num" id="ov-balance">$0</p>
+      </div>
+
+      <p class="section-title" id="ov-month-label">This month</p>
+      <div class="card">
+        <div class="split">
+          <div>
+            <p class="k">Income</p>
+            <p class="v pos num" id="ov-income">$0</p>
+          </div>
+          <div>
+            <p class="k">Expenses</p>
+            <p class="v neg num" id="ov-expense">$0</p>
+          </div>
+          <div>
+            <p class="k">Net</p>
+            <p class="v num" id="ov-net">$0</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="section-title">Spending by category</p>
+      <div class="card" id="ov-cats-card">
+        <div class="cats" id="ov-cats"></div>
       </div>
     </section>
 
@@ -503,7 +552,71 @@
       if (currentView === "more") renderMore();
     }
 
-    function renderOverview() {}
+    function renderOverview() {
+      var balance = 0;
+      state.tx.forEach(function (t) {
+        balance += t.type === "income" ? t.amount : -t.amount;
+      });
+      var balEl = el("ov-balance");
+      balEl.textContent = money(balance);
+      balEl.classList.toggle("pos", balance > 0);
+      balEl.classList.toggle("neg", balance < 0);
+
+      var mk = todayISO().slice(0, 7);
+      var mIncome = 0, mExpense = 0, byCat = {};
+      state.tx.forEach(function (t) {
+        if (t.date.slice(0, 7) !== mk) return;
+        if (t.type === "income") { mIncome += t.amount; }
+        else { mExpense += t.amount; byCat[t.category] = (byCat[t.category] || 0) + t.amount; }
+      });
+
+      el("ov-income").textContent = money(mIncome);
+      el("ov-expense").textContent = money(mExpense);
+      var net = mIncome - mExpense;
+      var netEl = el("ov-net");
+      netEl.textContent = money(net);
+      netEl.className = "v num " + (net > 0 ? "pos" : net < 0 ? "neg" : "");
+
+      var parts = mk.split("-");
+      var d = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+      el("ov-month-label").textContent = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+      var cats = el("ov-cats");
+      var entries = Object.keys(byCat).map(function (k) { return [k, byCat[k]]; })
+        .sort(function (a, b) { return b[1] - a[1]; });
+
+      if (!entries.length) {
+        cats.innerHTML = '<div class="empty">No spending this month yet.</div>';
+        return;
+      }
+
+      cats.innerHTML = "";
+      var max = entries[0][1];
+      entries.forEach(function (e) {
+        var row = document.createElement("div");
+
+        var top = document.createElement("div");
+        top.className = "cat-top";
+        var name = document.createElement("span");
+        name.className = "cat-name";
+        name.textContent = e[0];
+        var amt = document.createElement("span");
+        amt.className = "cat-amt num";
+        amt.textContent = money(e[1]);
+        top.appendChild(name);
+        top.appendChild(amt);
+
+        var bar = document.createElement("div");
+        bar.className = "bar";
+        var fill = document.createElement("i");
+        fill.style.width = Math.max(4, Math.round(e[1] / max * 100)) + "%";
+        bar.appendChild(fill);
+
+        row.appendChild(top);
+        row.appendChild(bar);
+        cats.appendChild(row);
+      });
+    }
     function renderPlans() {}
     function renderMore() {}
 
