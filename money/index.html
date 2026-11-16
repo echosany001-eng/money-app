@@ -151,6 +151,9 @@
   }
   .goal-add button.go:hover { border-color: var(--accent); }
 
+  /* more */
+  .hint { color: var(--muted); font-size: 13px; margin: 0; }
+
   .section-title {
     font-size: 13px;
     font-weight: 700;
@@ -495,9 +498,19 @@
     </section>
 
     <section id="view-more" hidden>
-      <div class="placeholder">
-        <div class="big">⋯</div>
-        <p>More is coming in the next step.</p>
+      <p class="section-title">Data</p>
+      <div class="card stack">
+        <p class="hint" id="more-stats"></p>
+        <button class="btn ghost" id="export-btn" type="button">Export data to file</button>
+        <button class="btn ghost" id="import-btn" type="button">Import data from file</button>
+        <input id="import-file" type="file" accept="application/json,.json" hidden>
+        <p class="hint" id="more-status"></p>
+      </div>
+
+      <p class="section-title">Reset</p>
+      <div class="card stack">
+        <button class="btn danger" id="clear-btn" type="button">Clear all data</button>
+        <p class="hint">Deletes everything stored on this device. Export a backup first if you need one.</p>
       </div>
     </section>
   </div>
@@ -988,7 +1001,56 @@
         wrap.appendChild(item);
       });
     }
-    function renderMore() {}
+    function plural(n, word) {
+      return n + " " + word + (n === 1 ? "" : "s");
+    }
+
+    function renderMore() {
+      var s = state;
+      el("more-stats").textContent =
+        plural(s.tx.length, "transaction") + " · " + plural(s.budgets.length, "budget") + " · " +
+        plural(s.goals.length, "goal") + " · " + plural(s.recurring.length, "recurring") + " · " +
+        plural(s.debts.length, "debt");
+    }
+
+    function moreStatus(msg) {
+      el("more-status").textContent = msg || "";
+    }
+
+    function exportData() {
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "money-backup-" + todayISO() + ".json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      moreStatus("Backup downloaded.");
+    }
+
+    function importData(file) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var parsed = JSON.parse(reader.result);
+          var base = blank();
+          ["tx", "budgets", "goals", "recurring", "debts"].forEach(function (k) {
+            if (Array.isArray(parsed[k])) base[k] = parsed[k];
+          });
+          state = base;
+          save();
+          renderAll();
+          renderMore();
+          moreStatus("Imported " + state.tx.length + " transactions.");
+        } catch (e) {
+          moreStatus("Could not read that file.");
+        }
+      };
+      reader.onerror = function () { moreStatus("Could not read that file."); };
+      reader.readAsText(file);
+    }
 
     function renderNav(view) {
       currentView = view;
@@ -1144,6 +1206,25 @@
       el("d-person").value = "";
       el("d-amount").value = "";
       renderDebts();
+    });
+
+    el("export-btn").addEventListener("click", exportData);
+    el("import-btn").addEventListener("click", function () {
+      el("import-file").click();
+    });
+    el("import-file").addEventListener("change", function () {
+      var f = this.files && this.files[0];
+      if (f) importData(f);
+      this.value = "";
+    });
+    el("clear-btn").addEventListener("click", function () {
+      if (window.confirm("Delete all data? This cannot be undone.")) {
+        state = blank();
+        save();
+        renderAll();
+        renderMore();
+        moreStatus("All data cleared.");
+      }
     });
 
     el("today").textContent = new Date().toLocaleDateString("en-US", {
