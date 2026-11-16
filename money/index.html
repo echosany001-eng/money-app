@@ -16,6 +16,7 @@
     --accent: #2563EB;
     --income: #10B981;
     --expense: #F87171;
+    --warn: #F59E0B;
     --text: #E8EEF8;
     --muted: #8FA0BC;
     --r-lg: 18px;
@@ -94,6 +95,61 @@
   .cat-amt { font-weight: 700; white-space: nowrap; }
   .bar { height: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
   .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+  /* plans */
+  .stack { display: grid; gap: 14px; }
+  .add-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .add-row .full { grid-column: 1 / -1; }
+  .add-row input, .add-row select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    min-height: 46px;
+    outline: none;
+  }
+  .add-row input:focus, .add-row select:focus { border-color: var(--accent); }
+  .add-row input::placeholder { color: #566A88; }
+  .mini-btn {
+    grid-column: 1 / -1;
+    appearance: none; border: 1px solid var(--accent); background: rgba(37,99,235,0.14);
+    color: #fff; font-size: 15px; font-weight: 700;
+    padding: 12px; min-height: 46px; border-radius: var(--r-sm); cursor: pointer;
+    transition: filter 0.15s ease;
+  }
+  .mini-btn:hover { filter: brightness(1.12); }
+
+  .plans-list { display: grid; gap: 14px; }
+  .plans-list:empty { display: none; }
+  .plan-item { display: grid; gap: 8px; }
+  .plan-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .plan-name { font-size: 15px; font-weight: 700; }
+  .plan-val { font-size: 14px; font-weight: 700; color: var(--muted); }
+  .plan-status { font-size: 12.5px; font-weight: 600; }
+  .plan-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .plan-del {
+    appearance: none; border: none; background: transparent; color: var(--muted);
+    font-size: 20px; line-height: 1; width: 36px; height: 36px; border-radius: 10px; cursor: pointer;
+  }
+  .plan-del:hover { color: var(--expense); background: rgba(248,113,113,0.1); }
+  .goal-add { display: flex; gap: 8px; align-items: center; }
+  .goal-add input {
+    flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--r-sm); color: var(--text); font-size: 15px;
+    padding: 10px 12px; min-height: 42px; outline: none;
+  }
+  .goal-add input:focus { border-color: var(--accent); }
+  .goal-add input::placeholder { color: #566A88; }
+  .goal-add button.go {
+    appearance: none; border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 14px; font-weight: 700;
+    padding: 10px 14px; min-height: 42px; border-radius: var(--r-sm); cursor: pointer;
+  }
+  .goal-add button.go:hover { border-color: var(--accent); }
 
   .section-title {
     font-size: 13px;
@@ -392,9 +448,49 @@
     </section>
 
     <section id="view-plans" hidden>
-      <div class="placeholder">
-        <div class="big">🎯</div>
-        <p>Plans are coming in the next step.</p>
+      <p class="section-title">Budgets</p>
+      <div class="card stack">
+        <div class="add-row">
+          <input id="b-cat" class="full" type="text" maxlength="24" placeholder="Category">
+          <input id="b-limit" class="full" type="number" inputmode="numeric" min="1" placeholder="Monthly limit">
+          <button class="mini-btn" id="b-add" type="button">Add budget</button>
+        </div>
+        <div class="plans-list" id="budget-list"></div>
+      </div>
+
+      <p class="section-title">Savings goals</p>
+      <div class="card stack">
+        <div class="add-row">
+          <input id="g-name" class="full" type="text" maxlength="40" placeholder="Goal name">
+          <input id="g-target" class="full" type="number" inputmode="numeric" min="1" placeholder="Target amount">
+          <button class="mini-btn" id="g-add" type="button">Add goal</button>
+        </div>
+        <div class="plans-list" id="goal-list"></div>
+      </div>
+
+      <p class="section-title">Recurring payments</p>
+      <div class="card stack">
+        <div class="add-row">
+          <input id="r-name" class="full" type="text" maxlength="40" placeholder="Name (e.g. Rent)">
+          <input id="r-amount" type="number" inputmode="numeric" min="1" placeholder="Amount">
+          <input id="r-day" type="number" inputmode="numeric" min="1" max="31" placeholder="Day 1-31">
+          <button class="mini-btn" id="r-add" type="button">Add payment</button>
+        </div>
+        <div class="plans-list" id="recurring-list"></div>
+      </div>
+
+      <p class="section-title">Debts</p>
+      <div class="card stack">
+        <div class="add-row">
+          <input id="d-person" class="full" type="text" maxlength="40" placeholder="Person">
+          <input id="d-amount" type="number" inputmode="numeric" min="1" placeholder="Amount">
+          <select id="d-dir">
+            <option value="owe">I owe</option>
+            <option value="owed">Owed to me</option>
+          </select>
+          <button class="mini-btn" id="d-add" type="button">Add debt</button>
+        </div>
+        <div class="plans-list" id="debt-list"></div>
       </div>
     </section>
 
@@ -694,7 +790,204 @@
         cats.appendChild(row);
       });
     }
-    function renderPlans() {}
+    function monthExpenseByCat() {
+      var mk = todayISO().slice(0, 7), map = {};
+      state.tx.forEach(function (t) {
+        if (t.type !== "expense" || t.date.slice(0, 7) !== mk) return;
+        map[t.category] = (map[t.category] || 0) + t.amount;
+      });
+      return map;
+    }
+
+    function planTop(name, value) {
+      var top = document.createElement("div");
+      top.className = "plan-top";
+      var n = document.createElement("span");
+      n.className = "plan-name";
+      n.textContent = name;
+      var v = document.createElement("span");
+      v.className = "plan-val num";
+      v.textContent = value;
+      top.appendChild(n);
+      top.appendChild(v);
+      return top;
+    }
+
+    function planBar(pct, color) {
+      var bar = document.createElement("div");
+      bar.className = "bar";
+      var fill = document.createElement("i");
+      fill.style.width = pct + "%";
+      if (color) fill.style.background = color;
+      bar.appendChild(fill);
+      return bar;
+    }
+
+    function delButton(onClick) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "plan-del";
+      b.setAttribute("aria-label", "Delete");
+      b.textContent = "×";
+      b.addEventListener("click", onClick);
+      return b;
+    }
+
+    function renderPlans() {
+      renderBudgets();
+      renderGoals();
+      renderRecurring();
+      renderDebts();
+    }
+
+    function renderBudgets() {
+      var spentMap = monthExpenseByCat();
+      var wrap = el("budget-list");
+      wrap.innerHTML = "";
+      if (!state.budgets.length) {
+        wrap.innerHTML = '<div class="empty">No budgets yet. Set a monthly limit per category.</div>';
+        return;
+      }
+      state.budgets.forEach(function (b) {
+        var spent = spentMap[b.category] || 0;
+        var over = spent > b.limit;
+        var near = !over && spent >= b.limit * 0.8;
+        var color = over ? "var(--expense)" : near ? "var(--warn)" : "var(--accent)";
+        var pct = b.limit ? Math.min(100, Math.round(spent / b.limit * 100)) : 0;
+
+        var item = document.createElement("div");
+        item.className = "plan-item";
+        item.appendChild(planTop(b.category, money(spent) + " / " + money(b.limit)));
+        item.appendChild(planBar(pct, color));
+
+        var foot = document.createElement("div");
+        foot.className = "plan-foot";
+        var status = document.createElement("span");
+        status.className = "plan-status";
+        status.textContent = over ? "Over by " + money(spent - b.limit)
+          : near ? "Close to limit"
+          : "On track";
+        status.style.color = over ? "var(--expense)" : near ? "var(--warn)" : "var(--income)";
+        foot.appendChild(status);
+        foot.appendChild(delButton(function () {
+          state.budgets = state.budgets.filter(function (x) { return x.id !== b.id; });
+          save();
+          renderBudgets();
+        }));
+        item.appendChild(foot);
+        wrap.appendChild(item);
+      });
+    }
+
+    function renderGoals() {
+      var wrap = el("goal-list");
+      wrap.innerHTML = "";
+      if (!state.goals.length) {
+        wrap.innerHTML = '<div class="empty">No goals yet. Add something to save for.</div>';
+        return;
+      }
+      state.goals.forEach(function (g) {
+        var pct = g.target ? Math.min(100, Math.round(g.saved / g.target * 100)) : 0;
+
+        var item = document.createElement("div");
+        item.className = "plan-item";
+        item.appendChild(planTop(g.name, money(g.saved) + " / " + money(g.target)));
+        item.appendChild(planBar(pct, "var(--income)"));
+
+        var row = document.createElement("div");
+        row.className = "goal-add";
+
+        var inp = document.createElement("input");
+        inp.type = "number";
+        inp.inputMode = "numeric";
+        inp.min = "1";
+        inp.placeholder = "Add amount";
+
+        var go = document.createElement("button");
+        go.type = "button";
+        go.className = "go";
+        go.textContent = "Save";
+        go.addEventListener("click", function () {
+          var v = Math.round(Number(inp.value));
+          if (!v || v <= 0) { inp.focus(); return; }
+          g.saved += v;
+          save();
+          renderGoals();
+        });
+
+        row.appendChild(inp);
+        row.appendChild(go);
+        row.appendChild(delButton(function () {
+          state.goals = state.goals.filter(function (x) { return x.id !== g.id; });
+          save();
+          renderGoals();
+        }));
+        item.appendChild(row);
+        wrap.appendChild(item);
+      });
+    }
+
+    function renderRecurring() {
+      var wrap = el("recurring-list");
+      wrap.innerHTML = "";
+      if (!state.recurring.length) {
+        wrap.innerHTML = '<div class="empty">No recurring payments yet.</div>';
+        return;
+      }
+      state.recurring.slice().sort(function (a, b) { return a.day - b.day; }).forEach(function (r) {
+        var item = document.createElement("div");
+        item.className = "plan-item";
+        item.appendChild(planTop(r.name, money(r.amount) + " / mo"));
+
+        var foot = document.createElement("div");
+        foot.className = "plan-foot";
+        var day = document.createElement("span");
+        day.className = "plan-status";
+        day.textContent = "Day " + r.day;
+        day.style.color = "var(--muted)";
+        foot.appendChild(day);
+        foot.appendChild(delButton(function () {
+          state.recurring = state.recurring.filter(function (x) { return x.id !== r.id; });
+          save();
+          renderRecurring();
+        }));
+        item.appendChild(foot);
+        wrap.appendChild(item);
+      });
+    }
+
+    function renderDebts() {
+      var wrap = el("debt-list");
+      wrap.innerHTML = "";
+      if (!state.debts.length) {
+        wrap.innerHTML = '<div class="empty">No debts yet. Track who owes whom.</div>';
+        return;
+      }
+      state.debts.forEach(function (d) {
+        var owes = d.direction === "owe";
+        var item = document.createElement("div");
+        item.className = "plan-item";
+        item.appendChild(planTop(
+          d.person,
+          (owes ? "-" : "+") + money(d.amount)
+        ));
+
+        var foot = document.createElement("div");
+        foot.className = "plan-foot";
+        var label = document.createElement("span");
+        label.className = "plan-status";
+        label.textContent = owes ? "You owe" : "Owes you";
+        label.style.color = owes ? "var(--expense)" : "var(--income)";
+        foot.appendChild(label);
+        foot.appendChild(delButton(function () {
+          state.debts = state.debts.filter(function (x) { return x.id !== d.id; });
+          save();
+          renderDebts();
+        }));
+        item.appendChild(foot);
+        wrap.appendChild(item);
+      });
+    }
     function renderMore() {}
 
     function renderNav(view) {
@@ -799,6 +1092,58 @@
     el("op-cat").addEventListener("change", function () {
       opCat = el("op-cat").value;
       renderOperations();
+    });
+
+    el("b-add").addEventListener("click", function () {
+      var cat = el("b-cat").value.trim();
+      var limit = Math.round(Number(el("b-limit").value));
+      if (!cat) { el("b-cat").focus(); return; }
+      if (!limit || limit <= 0) { el("b-limit").focus(); return; }
+      state.budgets.push({ id: uid(), category: cat, limit: limit });
+      save();
+      el("b-cat").value = "";
+      el("b-limit").value = "";
+      renderBudgets();
+    });
+
+    el("g-add").addEventListener("click", function () {
+      var name = el("g-name").value.trim();
+      var target = Math.round(Number(el("g-target").value));
+      if (!name) { el("g-name").focus(); return; }
+      if (!target || target <= 0) { el("g-target").focus(); return; }
+      state.goals.push({ id: uid(), name: name, target: target, saved: 0 });
+      save();
+      el("g-name").value = "";
+      el("g-target").value = "";
+      renderGoals();
+    });
+
+    el("r-add").addEventListener("click", function () {
+      var name = el("r-name").value.trim();
+      var amount = Math.round(Number(el("r-amount").value));
+      var day = Math.round(Number(el("r-day").value));
+      if (!name) { el("r-name").focus(); return; }
+      if (!amount || amount <= 0) { el("r-amount").focus(); return; }
+      if (!day || day < 1 || day > 31) { el("r-day").focus(); return; }
+      state.recurring.push({ id: uid(), name: name, amount: amount, category: "Bills", day: day });
+      save();
+      el("r-name").value = "";
+      el("r-amount").value = "";
+      el("r-day").value = "";
+      renderRecurring();
+    });
+
+    el("d-add").addEventListener("click", function () {
+      var person = el("d-person").value.trim();
+      var amount = Math.round(Number(el("d-amount").value));
+      var dir = el("d-dir").value;
+      if (!person) { el("d-person").focus(); return; }
+      if (!amount || amount <= 0) { el("d-amount").focus(); return; }
+      state.debts.push({ id: uid(), person: person, amount: amount, direction: dir });
+      save();
+      el("d-person").value = "";
+      el("d-amount").value = "";
+      renderDebts();
     });
 
     el("today").textContent = new Date().toLocaleDateString("en-US", {
