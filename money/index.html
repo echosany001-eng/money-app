@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#080D19">
+<title>Money</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080D19;
+    --card: #0F172A;
+    --border: #1E2A44;
+    --accent: #2563EB;
+    --income: #10B981;
+    --expense: #F87171;
+    --text: #E8EEF8;
+    --muted: #8FA0BC;
+    --r-lg: 18px;
+    --r-md: 16px;
+    --r-sm: 14px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+  }
+
+  body {
+    color: var(--text);
+    font-family: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+
+  .app {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 20px 16px calc(96px + env(safe-area-inset-bottom));
+    min-height: 100dvh;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .topbar h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .topbar .date {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .num { font-variant-numeric: tabular-nums; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 20px;
+  }
+
+  .balance {
+    margin-bottom: 16px;
+  }
+
+  .balance .label {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 6px;
+  }
+
+  .balance .amount {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+
+  .balance .split {
+    display: flex;
+    gap: 20px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .balance .split div { flex: 1; }
+
+  .balance .split .k {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    margin: 0 0 2px;
+  }
+
+  .balance .split .v {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .pos { color: var(--income); }
+  .neg { color: var(--expense); }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 24px 0 12px;
+  }
+
+  .add-card { display: grid; gap: 12px; }
+
+  .toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 4px;
+  }
+
+  .toggle button {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px;
+    min-height: 44px;
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .toggle button.active[data-type="expense"] {
+    background: rgba(248, 113, 113, 0.14);
+    color: var(--expense);
+  }
+
+  .toggle button.active[data-type="income"] {
+    background: rgba(16, 185, 129, 0.14);
+    color: var(--income);
+  }
+
+  .field label {
+    display: block;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 16px;
+    padding: 12px 14px;
+    min-height: 44px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .field input:focus { border-color: var(--accent); }
+  .field input::placeholder { color: #566A88; }
+
+  .amount-input {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .btn {
+    appearance: none;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 14px 20px;
+    min-height: 48px;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: filter 0.15s ease;
+  }
+
+  .btn:hover { filter: brightness(1.08); }
+  .btn:active { filter: brightness(0.95); }
+
+  .tx-list { display: grid; gap: 10px; }
+
+  .tx {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 14px 16px;
+    min-height: 60px;
+  }
+
+  .tx .icon {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .tx.income .icon { background: rgba(16, 185, 129, 0.14); color: var(--income); }
+  .tx.expense .icon { background: rgba(248, 113, 113, 0.14); color: var(--expense); }
+
+  .tx .body { flex: 1; min-width: 0; }
+
+  .tx .title {
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tx .meta {
+    color: var(--muted);
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+
+  .tx .amt {
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .tx .del {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+
+  .tx .del:hover { color: var(--expense); background: rgba(248, 113, 113, 0.1); }
+
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 32px 16px;
+    border: 1px dashed var(--border);
+    border-radius: var(--r-md);
+  }
+
+  .placeholder {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 56px 20px;
+  }
+
+  .placeholder .big { font-size: 32px; margin-bottom: 8px; }
+
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    background: rgba(8, 13, 25, 0.92);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .tabbar-inner {
+    max-width: 520px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+
+  .tab {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 8px 4px;
+    min-height: 52px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+
+  .tab svg { width: 22px; height: 22px; display: block; }
+  .tab.active { color: var(--accent); background: rgba(37, 99, 235, 0.1); }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <h1>Money</h1>
+      <span class="date" id="today"></span>
+    </div>
+
+    <section id="view-home">
+      <div class="card balance">
+        <p class="label">Balance</p>
+        <p class="amount num" id="balance">$0</p>
+        <div class="split">
+          <div>
+            <p class="k">Income</p>
+            <p class="v pos num" id="total-income">$0</p>
+          </div>
+          <div>
+            <p class="k">Expenses</p>
+            <p class="v neg num" id="total-expense">$0</p>
+          </div>
+        </div>
+      </div>
+
+      <form class="card add-card" id="tx-form">
+        <div class="toggle" id="type-toggle">
+          <button type="button" data-type="expense" class="active">Expense</button>
+          <button type="button" data-type="income">Income</button>
+        </div>
+
+        <div class="field">
+          <label for="amount">Amount</label>
+          <input class="amount-input" id="amount" name="amount" type="number" inputmode="numeric" step="1" min="0" placeholder="0" required>
+        </div>
+
+        <div class="field">
+          <label for="note">Note</label>
+          <input id="note" name="note" type="text" maxlength="60" placeholder="What was it?">
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="category">Category</label>
+            <input id="category" name="category" type="text" maxlength="24" placeholder="General">
+          </div>
+          <div class="field">
+            <label for="date">Date</label>
+            <input id="date" name="date" type="date">
+          </div>
+        </div>
+
+        <button class="btn" type="submit" id="submit-btn">Add expense</button>
+      </form>
+
+      <p class="section-title">Transactions</p>
+      <div class="tx-list" id="tx-list"></div>
+    </section>
+
+    <section id="view-budgets" hidden>
+      <div class="placeholder">
+        <div class="big">🎯</div>
+        <p>Budgets are coming in the next step.</p>
+      </div>
+    </section>
+
+    <section id="view-goals" hidden>
+      <div class="placeholder">
+        <div class="big">🏁</div>
+        <p>Goals are coming in the next step.</p>
+      </div>
+    </section>
+
+    <section id="view-debts" hidden>
+      <div class="placeholder">
+        <div class="big">🤝</div>
+        <p>Debts are coming in the next step.</p>
+      </div>
+    </section>
+  </div>
+
+  <nav class="tabbar" aria-label="Main navigation">
+    <div class="tabbar-inner">
+      <button class="tab active" data-view="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+        Home
+      </button>
+      <button class="tab" data-view="budgets">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+        Budgets
+      </button>
+      <button class="tab" data-view="goals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V4"/><path d="M4 4h13l-2.5 4L17 12H4"/></svg>
+        Goals
+      </button>
+      <button class="tab" data-view="debts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8a5 5 0 0 0-10 0v8l-2 2h14l-2-2z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+        Debts
+      </button>
+    </div>
+  </nav>
+
+<script>
+  (function () {
+    "use strict";
+
+    var DB_KEY = "money.v2";
+
+    function blank() {
+      return { tx: [], budgets: [], goals: [], recurring: [], debts: [] };
+    }
+
+    var state = load();
+    var txType = "expense";
+
+    function load() {
+      try {
+        var raw = localStorage.getItem(DB_KEY);
+        if (!raw) return blank();
+        var parsed = JSON.parse(raw);
+        var base = blank();
+        ["tx", "budgets", "goals", "recurring", "debts"].forEach(function (k) {
+          if (Array.isArray(parsed[k])) base[k] = parsed[k];
+        });
+        return base;
+      } catch (e) {
+        return blank();
+      }
+    }
+
+    function save() {
+      try {
+        localStorage.setItem(DB_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.warn("Could not save to localStorage:", e);
+      }
+    }
+
+    function el(id) { return document.getElementById(id); }
+
+    function money(n) {
+      return "$" + Math.round(n).toLocaleString("en-US");
+    }
+
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    }
+
+    function todayISO() {
+      var d = new Date();
+      var off = d.getTimezoneOffset();
+      return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+    }
+
+    function formatDate(iso) {
+      var parts = iso.split("-");
+      var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function renderTotals() {
+      var income = 0, expense = 0;
+      state.tx.forEach(function (t) {
+        if (t.type === "income") income += t.amount;
+        else expense += t.amount;
+      });
+      var balance = income - expense;
+      var elBal = el("balance");
+      elBal.textContent = money(balance);
+      elBal.classList.toggle("pos", balance > 0);
+      elBal.classList.toggle("neg", balance < 0);
+      el("total-income").textContent = money(income);
+      el("total-expense").textContent = money(expense);
+    }
+
+    function renderTx() {
+      var list = el("tx-list");
+      if (!state.tx.length) {
+        list.innerHTML = '<div class="empty">No transactions yet. Add your first one above.</div>';
+        return;
+      }
+      var sorted = state.tx.slice().sort(function (a, b) {
+        if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+        return b.createdAt - a.createdAt;
+      });
+      list.innerHTML = "";
+      sorted.forEach(function (t) {
+        var row = document.createElement("div");
+        row.className = "tx " + t.type;
+
+        var icon = document.createElement("div");
+        icon.className = "icon";
+        icon.textContent = t.type === "income" ? "↑" : "↓";
+
+        var body = document.createElement("div");
+        body.className = "body";
+        var title = document.createElement("div");
+        title.className = "title";
+        title.textContent = t.note || (t.type === "income" ? "Income" : "Expense");
+        var meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = t.category + " · " + formatDate(t.date);
+        body.appendChild(title);
+        body.appendChild(meta);
+
+        var amt = document.createElement("div");
+        amt.className = "amt num " + (t.type === "income" ? "pos" : "neg");
+        amt.textContent = (t.type === "income" ? "+" : "-") + money(t.amount);
+
+        var del = document.createElement("button");
+        del.className = "del";
+        del.type = "button";
+        del.setAttribute("aria-label", "Delete");
+        del.textContent = "×";
+        del.addEventListener("click", function () {
+          state.tx = state.tx.filter(function (x) { return x.id !== t.id; });
+          save();
+          renderTx();
+          renderTotals();
+        });
+
+        row.appendChild(icon);
+        row.appendChild(body);
+        row.appendChild(amt);
+        row.appendChild(del);
+        list.appendChild(row);
+      });
+    }
+
+    function renderNav(view) {
+      var views = ["home", "budgets", "goals", "debts"];
+      views.forEach(function (v) {
+        el("view-" + v).hidden = v !== view;
+      });
+      Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (tab) {
+        tab.classList.toggle("active", tab.getAttribute("data-view") === view);
+      });
+    }
+
+    function setType(type) {
+      txType = type;
+      Array.prototype.forEach.call(el("type-toggle").querySelectorAll("button"), function (b) {
+        b.classList.toggle("active", b.getAttribute("data-type") === type);
+      });
+      el("submit-btn").textContent = type === "income" ? "Add income" : "Add expense";
+    }
+
+    el("type-toggle").addEventListener("click", function (e) {
+      var btn = e.target.closest("button[data-type]");
+      if (btn) setType(btn.getAttribute("data-type"));
+    });
+
+    el("tx-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var amount = Math.round(Number(el("amount").value));
+      if (!amount || amount <= 0) {
+        el("amount").focus();
+        return;
+      }
+      var note = el("note").value.trim();
+      var category = el("category").value.trim() || "General";
+      var date = el("date").value || todayISO();
+
+      state.tx.push({
+        id: uid(),
+        type: txType,
+        amount: amount,
+        note: note,
+        category: category,
+        date: date,
+        createdAt: Date.now()
+      });
+      save();
+
+      el("amount").value = "";
+      el("note").value = "";
+      el("category").value = "";
+      renderTx();
+      renderTotals();
+      el("amount").focus();
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (tab) {
+      tab.addEventListener("click", function () {
+        renderNav(tab.getAttribute("data-view"));
+      });
+    });
+
+    el("date").value = todayISO();
+    el("today").textContent = new Date().toLocaleDateString("en-US", {
+      weekday: "short", month: "short", day: "numeric"
+    });
+    setType("expense");
+    renderTx();
+    renderTotals();
+  })();
+</script>
+</body>
+</html>
