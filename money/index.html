@@ -1009,7 +1009,7 @@
       var s = state;
       el("more-stats").textContent =
         plural(s.tx.length, "transaction") + " · " + plural(s.budgets.length, "budget") + " · " +
-        plural(s.goals.length, "goal") + " · " + plural(s.recurring.length, "recurring") + " · " +
+        plural(s.goals.length, "goal") + " · " + s.recurring.length + " recurring · " +
         plural(s.debts.length, "debt");
     }
 
