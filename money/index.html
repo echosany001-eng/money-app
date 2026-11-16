@@ -136,6 +136,32 @@
   .placeholder .big { font-size: 32px; margin-bottom: 8px; }
 
   /* transactions */
+  .filters { display: grid; gap: 10px; margin-bottom: 14px; }
+  .filters input, .filters select {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    min-height: 46px;
+    outline: none;
+  }
+  .filters input:focus, .filters select:focus { border-color: var(--accent); }
+  .filters input::placeholder { color: #566A88; }
+  .filters .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .filters select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238FA0BC' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 34px;
+  }
+  .count { color: var(--muted); font-size: 13px; font-weight: 600; margin: 0 0 12px; }
+
   .tx-list { display: grid; gap: 10px; }
 
   .tx {
@@ -354,6 +380,14 @@
     </section>
 
     <section id="view-operations" hidden>
+      <div class="filters">
+        <input id="op-search" type="search" placeholder="Search note or category" autocomplete="off" aria-label="Search">
+        <div class="row2">
+          <select id="op-month" aria-label="Filter by month"></select>
+          <select id="op-cat" aria-label="Filter by category"></select>
+        </div>
+      </div>
+      <p class="count" id="op-count"></p>
       <div class="tx-list" id="tx-list"></div>
     </section>
 
@@ -448,6 +482,7 @@
     var currentView = "overview";
     var qType = "expense";
     var qCategory = null;
+    var opSearch = "", opMonth = "all", opCat = "all";
 
     function load() {
       try {
@@ -489,60 +524,102 @@
       return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
 
-    function sortedTx() {
-      return state.tx.slice().sort(function (a, b) {
-        if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-        return b.createdAt - a.createdAt;
+    function monthLabel(mk) {
+      var p = mk.split("-");
+      var d = new Date(Number(p[0]), Number(p[1]) - 1, 1);
+      return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+
+    function buildTxRow(t) {
+      var row = document.createElement("div");
+      row.className = "tx " + t.type;
+
+      var icon = document.createElement("div");
+      icon.className = "icon";
+      icon.textContent = t.type === "income" ? "↑" : "↓";
+
+      var body = document.createElement("div");
+      body.className = "body";
+      var title = document.createElement("div");
+      title.className = "title";
+      title.textContent = t.note || t.category;
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = t.category + " · " + formatDate(t.date);
+      body.appendChild(title);
+      body.appendChild(meta);
+
+      var amt = document.createElement("div");
+      amt.className = "amt num " + (t.type === "income" ? "pos" : "neg");
+      amt.textContent = (t.type === "income" ? "+" : "-") + money(t.amount);
+
+      var del = document.createElement("button");
+      del.className = "del";
+      del.type = "button";
+      del.setAttribute("aria-label", "Delete");
+      del.textContent = "×";
+      del.addEventListener("click", function () {
+        state.tx = state.tx.filter(function (x) { return x.id !== t.id; });
+        save();
+        renderAll();
       });
+
+      row.appendChild(icon);
+      row.appendChild(body);
+      row.appendChild(amt);
+      row.appendChild(del);
+      return row;
     }
 
     function renderOperations() {
+      var mkSet = {}, catSet = {};
+      state.tx.forEach(function (t) {
+        mkSet[t.date.slice(0, 7)] = true;
+        catSet[t.category] = true;
+      });
+
+      var monthKeys = Object.keys(mkSet).sort().reverse();
+      var mSel = el("op-month");
+      mSel.innerHTML = '<option value="all">All months</option>' +
+        monthKeys.map(function (mk) { return '<option value="' + mk + '">' + monthLabel(mk) + "</option>"; }).join("");
+      if (opMonth !== "all" && monthKeys.indexOf(opMonth) === -1) opMonth = "all";
+      mSel.value = opMonth;
+
+      var catKeys = Object.keys(catSet).sort();
+      var cSel = el("op-cat");
+      cSel.innerHTML = '<option value="all">All categories</option>' +
+        catKeys.map(function (c) { return "<option>" + c + "</option>"; }).join("");
+      if (opCat !== "all" && catKeys.indexOf(opCat) === -1) opCat = "all";
+      cSel.value = opCat;
+
+      var q = opSearch.toLowerCase();
+      var filtered = state.tx.filter(function (t) {
+        if (opMonth !== "all" && t.date.slice(0, 7) !== opMonth) return false;
+        if (opCat !== "all" && t.category !== opCat) return false;
+        if (q) {
+          var hit = (t.note || "").toLowerCase().indexOf(q) !== -1 ||
+                    t.category.toLowerCase().indexOf(q) !== -1;
+          if (!hit) return false;
+        }
+        return true;
+      }).sort(function (a, b) {
+        if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+        return b.createdAt - a.createdAt;
+      });
+
+      el("op-count").textContent = filtered.length
+        ? filtered.length + (filtered.length === 1 ? " transaction" : " transactions")
+        : "";
+
       var list = el("tx-list");
-      if (!state.tx.length) {
-        list.innerHTML = '<div class="empty">No transactions yet. Tap + to add one.</div>';
+      list.innerHTML = "";
+      if (!filtered.length) {
+        list.innerHTML = state.tx.length
+          ? '<div class="empty">Nothing matches these filters.</div>'
+          : '<div class="empty">No transactions yet. Tap + to add one.</div>';
         return;
       }
-      list.innerHTML = "";
-      sortedTx().forEach(function (t) {
-        var row = document.createElement("div");
-        row.className = "tx " + t.type;
-
-        var icon = document.createElement("div");
-        icon.className = "icon";
-        icon.textContent = t.type === "income" ? "↑" : "↓";
-
-        var body = document.createElement("div");
-        body.className = "body";
-        var title = document.createElement("div");
-        title.className = "title";
-        title.textContent = t.note || t.category;
-        var meta = document.createElement("div");
-        meta.className = "meta";
-        meta.textContent = t.category + " · " + formatDate(t.date);
-        body.appendChild(title);
-        body.appendChild(meta);
-
-        var amt = document.createElement("div");
-        amt.className = "amt num " + (t.type === "income" ? "pos" : "neg");
-        amt.textContent = (t.type === "income" ? "+" : "-") + money(t.amount);
-
-        var del = document.createElement("button");
-        del.className = "del";
-        del.type = "button";
-        del.setAttribute("aria-label", "Delete");
-        del.textContent = "×";
-        del.addEventListener("click", function () {
-          state.tx = state.tx.filter(function (x) { return x.id !== t.id; });
-          save();
-          renderAll();
-        });
-
-        row.appendChild(icon);
-        row.appendChild(body);
-        row.appendChild(amt);
-        row.appendChild(del);
-        list.appendChild(row);
-      });
+      filtered.forEach(function (t) { list.appendChild(buildTxRow(t)); });
     }
 
     function renderAll() {
@@ -709,6 +786,19 @@
     });
     Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (tab) {
       tab.addEventListener("click", function () { renderNav(tab.getAttribute("data-view")); });
+    });
+
+    el("op-search").addEventListener("input", function () {
+      opSearch = el("op-search").value.trim();
+      renderOperations();
+    });
+    el("op-month").addEventListener("change", function () {
+      opMonth = el("op-month").value;
+      renderOperations();
+    });
+    el("op-cat").addEventListener("change", function () {
+      opCat = el("op-cat").value;
+      renderOperations();
     });
 
     el("today").textContent = new Date().toLocaleDateString("en-US", {
