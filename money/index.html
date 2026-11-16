@@ -128,6 +128,7 @@
 
   .plans-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .plans-list:empty { display: none; }
+  #view-plans { padding-bottom: 72px; }
   .plan-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
   .plan-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; min-width: 0; }
   .plan-name { font-size: 15px; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -463,7 +464,7 @@
       <p class="section-title">Budgets</p>
       <div class="card stack">
         <div class="add-row">
-          <input id="b-cat" class="full" type="text" maxlength="24" placeholder="Category">
+          <select id="b-cat" class="full" aria-label="Budget category"></select>
           <input id="b-limit" class="full" type="number" inputmode="numeric" min="1" placeholder="Monthly limit">
           <button class="mini-btn" id="b-add" type="button">Add budget</button>
         </div>
@@ -870,6 +871,12 @@
       renderDebts();
     }
 
+    function fillBudgetCategories() {
+      el("b-cat").innerHTML = CATEGORIES.expense.map(function (c) {
+        return "<option>" + c + "</option>";
+      }).join("");
+    }
+
     function renderBudgets() {
       var spentMap = monthExpenseByCat();
       var wrap = el("budget-list");
@@ -1182,7 +1189,6 @@
       if (!limit || limit <= 0) { el("b-limit").focus(); return; }
       state.budgets.push({ id: uid(), category: cat, limit: limit });
       save();
-      el("b-cat").value = "";
       el("b-limit").value = "";
       renderBudgets();
     });
@@ -1276,11 +1282,43 @@
     function csSet(key, value) { return csCall("setItem", [key, value]); }
     function csGet(key) { return csCall("getItem", [key]); }
 
+    function utf8Length(str) {
+      if (typeof TextEncoder !== "undefined") return new TextEncoder().encode(str).length;
+      var n = 0;
+      for (var i = 0; i < str.length; i++) {
+        var c = str.charCodeAt(i);
+        if (c < 0x80) n += 1;
+        else if (c < 0x800) n += 2;
+        else if (c >= 0xD800 && c <= 0xDBFF) { n += 4; i++; }
+        else n += 3;
+      }
+      return n;
+    }
+
+    function splitByUtf8Bytes(str, maxBytes) {
+      var chunks = [];
+      var cur = "";
+      var curBytes = 0;
+      var chars = Array.from(str);
+      for (var i = 0; i < chars.length; i++) {
+        var ch = chars[i];
+        var cb = utf8Length(ch);
+        if (curBytes + cb > maxBytes && cur) {
+          chunks.push(cur);
+          cur = "";
+          curBytes = 0;
+        }
+        cur += ch;
+        curBytes += cb;
+      }
+      if (cur) chunks.push(cur);
+      return chunks;
+    }
+
     function cloudSave(ts) {
       if (!(tg && tg.CloudStorage)) return;
       var json = JSON.stringify(state);
-      var chunks = [];
-      for (var i = 0; i < json.length; i += 3500) chunks.push(json.slice(i, i + 3500));
+      var chunks = splitByUtf8Bytes(json, 3500);
       Promise.all(chunks.map(function (chunk, i) { return csSet("m" + i, chunk); }))
         .then(function () { return csSet("mc", String(chunks.length)); })
         .then(function () { return csSet("mt", String(ts)); })
@@ -1334,6 +1372,7 @@
     el("today").textContent = new Date().toLocaleDateString("en-US", {
       weekday: "short", month: "short", day: "numeric"
     });
+    fillBudgetCategories();
     renderNav("overview");
     initTelegram();
   })();
