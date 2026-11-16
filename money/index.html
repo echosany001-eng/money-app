@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script async src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root {
     --bg: #080D19;
@@ -578,6 +579,7 @@
     "use strict";
 
     var DB_KEY = "money.v2";
+    var tg = null;
 
     var CATEGORIES = {
       expense: ["Food", "Groceries", "Transport", "Shopping", "Bills", "Health", "Fun", "Home", "Other"],
@@ -617,11 +619,14 @@
     }
 
     function save() {
+      var ts = Date.now();
       try {
         localStorage.setItem(DB_KEY, JSON.stringify(state));
+        localStorage.setItem(DB_KEY + ".mt", String(ts));
       } catch (e) {
         console.warn("Could not save:", e);
       }
+      cloudSave(ts);
     }
 
     function el(id) { return document.getElementById(id); }
@@ -1241,10 +1246,96 @@
       }
     });
 
+    /* ---------- telegram mini app ---------- */
+
+    function waitForTelegram(timeoutMs) {
+      return new Promise(function (resolve) {
+        var start = Date.now();
+        (function poll() {
+          if (window.Telegram && window.Telegram.WebApp) return resolve(window.Telegram.WebApp);
+          if (Date.now() - start >= timeoutMs) return resolve(null);
+          setTimeout(poll, 50);
+        })();
+      });
+    }
+
+    function csCall(method, args) {
+      return new Promise(function (resolve, reject) {
+        var cs = tg && tg.CloudStorage;
+        if (!cs || typeof cs[method] !== "function") { reject(new Error("no CloudStorage")); return; }
+        var result;
+        try {
+          result = cs[method].apply(cs, args.concat([function (err, value) {
+            if (err) reject(err); else resolve(value);
+          }]));
+        } catch (e) { reject(e); return; }
+        if (result && typeof result.then === "function") result.then(resolve, reject);
+      });
+    }
+
+    function csSet(key, value) { return csCall("setItem", [key, value]); }
+    function csGet(key) { return csCall("getItem", [key]); }
+
+    function cloudSave(ts) {
+      if (!(tg && tg.CloudStorage)) return;
+      var json = JSON.stringify(state);
+      var chunks = [];
+      for (var i = 0; i < json.length; i += 3500) chunks.push(json.slice(i, i + 3500));
+      Promise.all(chunks.map(function (chunk, i) { return csSet("m" + i, chunk); }))
+        .then(function () { return csSet("mc", String(chunks.length)); })
+        .then(function () { return csSet("mt", String(ts)); })
+        .catch(function (e) { console.warn("Cloud save failed:", e); });
+    }
+
+    function cloudLoad() {
+      if (!(tg && tg.CloudStorage)) return;
+      csGet("mt").then(function (mtRaw) {
+        var cloudTs = Number(mtRaw);
+        if (!mtRaw || isNaN(cloudTs)) return;
+        var localTs = Number(localStorage.getItem(DB_KEY + ".mt")) || 0;
+        if (cloudTs <= localTs) return;
+        return csGet("mc").then(function (mcRaw) {
+          var count = Number(mcRaw);
+          if (!count || count < 1) return;
+          var keys = [];
+          for (var i = 0; i < count; i++) keys.push("m" + i);
+          return Promise.all(keys.map(csGet)).then(function (parts) {
+            var parsed = JSON.parse(parts.join(""));
+            var base = blank();
+            ["tx", "budgets", "goals", "recurring", "debts"].forEach(function (k) {
+              if (Array.isArray(parsed[k])) base[k] = parsed[k];
+            });
+            state = base;
+            try {
+              localStorage.setItem(DB_KEY, JSON.stringify(state));
+              localStorage.setItem(DB_KEY + ".mt", String(cloudTs));
+            } catch (e) { console.warn("Could not save:", e); }
+            renderAll();
+            renderMore();
+          });
+        });
+      }).catch(function (e) { console.warn("Cloud load failed:", e); });
+    }
+
+    function initTelegram() {
+      waitForTelegram(2500).then(function (app) {
+        if (!app) return;
+        tg = app;
+        try {
+          tg.ready();
+          if (tg.expand) tg.expand();
+          if (tg.setHeaderColor) tg.setHeaderColor("#080D19");
+          if (tg.setBackgroundColor) tg.setBackgroundColor("#080D19");
+        } catch (e) { console.warn("Telegram init failed:", e); }
+        cloudLoad();
+      });
+    }
+
     el("today").textContent = new Date().toLocaleDateString("en-US", {
       weekday: "short", month: "short", day: "numeric"
     });
     renderNav("overview");
+    initTelegram();
   })();
 </script>
 </body>
